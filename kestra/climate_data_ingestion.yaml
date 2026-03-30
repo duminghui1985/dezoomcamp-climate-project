@@ -1,0 +1,105 @@
+id: climate_data_ingestion
+namespace: dezoomcamp.project
+description: |
+  Extract climate and population CSV files from GitHub mirror.
+  Upload raw data to GCS Bucket (Data Lake).
+  Create external tables in BigQuery (Data Warehouse).
+
+variables:
+  # Source URLs from GitHub Mirror
+  temp_url: "https://raw.githubusercontent.com/duminghui1985/dezoomcamp-climate-project/feature/init/data/raw/GlobalLandTemperaturesByCountry.csv"
+  pop_url: "https://raw.githubusercontent.com/duminghui1985/dezoomcamp-climate-project/feature/init/data/raw/API_SP.POP.TOTL_DS2_en_csv_v2_61.csv"
+  
+  # GCS File Paths
+  temp_gcs_file: "gs://{{ kv('GCP_BUCKET_NAME') }}/raw/temperature_data.csv"
+  pop_gcs_file: "gs://{{ kv('GCP_BUCKET_NAME') }}/raw/population_data.csv"
+
+tasks:
+  # Step 1: Extract temperature and population data in parallel
+  - id: extract_data
+    type: io.kestra.plugin.core.flow.Parallel
+    tasks:
+      - id: download_temp
+        type: io.kestra.plugin.core.http.Download
+        uri: "{{ vars.temp_url }}"
+
+      - id: download_pop
+        type: io.kestra.plugin.core.http.Download
+        uri: "{{ vars.pop_url }}"
+
+  # Step 2: Upload raw temperature data to GCS
+  - id: upload_temp_to_gcs
+    type: io.kestra.plugin.gcp.gcs.Upload
+    from: "{{ outputs.download_temp.uri }}"
+    to: "{{ render(vars.temp_gcs_file) }}"
+
+  # Step 3: Upload raw population data to GCS
+  - id: upload_pop_to_gcs
+    type: io.kestra.plugin.gcp.gcs.Upload
+    from: "{{ outputs.download_pop.uri }}"
+    to: "{{ render(vars.pop_gcs_file) }}"
+
+  # Step 4: Create external table for temperature in BigQuery
+  - id: create_bq_ext_temp
+    type: io.kestra.plugin.gcp.bigquery.Query
+    sql: |
+      CREATE OR REPLACE EXTERNAL TABLE `{{ kv('GCP_PROJECT_ID') }}.{{ kv('GCP_DATASET') }}.ext_temperature`
+      (
+        dt STRING, -- Ingest as STRING first to avoid format errors; cast to DATE in dbt
+        AverageTemperature FLOAT64,
+        AverageTemperatureUncertainty FLOAT64,
+        Country STRING
+      )
+      OPTIONS (
+        format = 'CSV',
+        uris = ['{{ render(vars.temp_gcs_file) }}'],
+        skip_leading_rows = 1, -- Skip 1 row of header for temperature data
+        ignore_unknown_values = TRUE
+      );
+
+  # Step 5: Create external table for population in BigQuery
+  - id: create_bq_ext_pop
+    type: io.kestra.plugin.gcp.bigquery.Query
+    sql: |
+      CREATE OR REPLACE EXTERNAL TABLE `{{ kv('GCP_PROJECT_ID') }}.{{ kv('GCP_DATASET') }}.ext_population`
+      (
+        country_name STRING,
+        country_code STRING,
+        indicator_name STRING,
+        indicator_code STRING,
+        -- BigQuery columns MUST start with a letter or underscore. 
+        -- We add 'year_' prefix here and will fix it in dbt later.
+        year_1960 FLOAT64, year_1961 FLOAT64, year_1962 FLOAT64, year_1963 FLOAT64, year_1964 FLOAT64, 
+        year_1965 FLOAT64, year_1966 FLOAT64, year_1967 FLOAT64, year_1968 FLOAT64, year_1969 FLOAT64, 
+        year_1970 FLOAT64, year_1971 FLOAT64, year_1972 FLOAT64, year_1973 FLOAT64, year_1974 FLOAT64, 
+        year_1975 FLOAT64, year_1976 FLOAT64, year_1977 FLOAT64, year_1978 FLOAT64, year_1979 FLOAT64, 
+        year_1980 FLOAT64, year_1981 FLOAT64, year_1982 FLOAT64, year_1983 FLOAT64, year_1984 FLOAT64, 
+        year_1985 FLOAT64, year_1986 FLOAT64, year_1987 FLOAT64, year_1988 FLOAT64, year_1989 FLOAT64, 
+        year_1990 FLOAT64, year_1991 FLOAT64, year_1992 FLOAT64, year_1993 FLOAT64, year_1994 FLOAT64, 
+        year_1995 FLOAT64, year_1996 FLOAT64, year_1997 FLOAT64, year_1998 FLOAT64, year_1999 FLOAT64, 
+        year_2000 FLOAT64, year_2001 FLOAT64, year_2002 FLOAT64, year_2003 FLOAT64, year_2004 FLOAT64, 
+        year_2005 FLOAT64, year_2006 FLOAT64, year_2007 FLOAT64, year_2008 FLOAT64, year_2009 FLOAT64, 
+        year_2010 FLOAT64, year_2011 FLOAT64, year_2012 FLOAT64, year_2013 FLOAT64, year_2014 FLOAT64, 
+        year_2015 FLOAT64, year_2016 FLOAT64, year_2017 FLOAT64, year_2018 FLOAT64, year_2019 FLOAT64, 
+        year_2020 FLOAT64, year_2021 FLOAT64, year_2022 FLOAT64, year_2023 FLOAT64, year_2024 FLOAT64
+      )
+      OPTIONS (
+        format = 'CSV',
+        uris = ['{{ render(vars.pop_gcs_file) }}'],
+        skip_leading_rows = 5, -- Skip 4 rows of metadata + 1 row of header
+        ignore_unknown_values = TRUE -- Ignore extra columns (e.g., "2025", "Unnamed: 70") outside the schema
+      );
+
+pluginDefaults:
+  - type: io.kestra.plugin.gcp
+    values:
+      serviceAccount: "{{ secret('GCP_SERVICE_ACCOUNT') }}"
+      projectId: "{{ kv('GCP_PROJECT_ID') }}"
+      location: "{{ kv('GCP_LOCATION') }}"
+      bucket: "{{ kv('GCP_BUCKET_NAME') }}"
+
+# Monthly schedule to trigger the flow (Demonstrates Orchestration)
+triggers:
+  - id: monthly_schedule
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 0 1 * *"
