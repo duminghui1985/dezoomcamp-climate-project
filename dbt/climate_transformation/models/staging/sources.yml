@@ -1,0 +1,9 @@
+version: 2
+
+sources:
+  - name: raw_climate_source
+    database: dezoomcamp-climate-project
+    schema: raw_climate_dataset 
+    tables:
+      - name: ext_temperature
+      - name: ext_population
