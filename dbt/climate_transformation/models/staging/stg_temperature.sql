@@ -1,5 +1,3 @@
-{{ config(materialized='view') }}
-
 with temp_raw as (
     select
         parse_date('%Y-%m-%d', dt) as event_date,

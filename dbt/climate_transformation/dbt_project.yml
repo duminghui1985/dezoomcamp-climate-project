@@ -32,5 +32,13 @@ clean-targets:         # directories to be removed by `dbt clean`
 models:
   climate_transformation:
     # Config indicated by + and applies to all files under models/example/
-    example:
+    staging:
       +materialized: view
+    intermediate:
+      +materialized: view
+
+seeds:
+  climate_transformation:
+    +column_types:
+      temp_name: string
+      country_code: string

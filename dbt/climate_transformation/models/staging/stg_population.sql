@@ -1,5 +1,3 @@
-{{ config(materialized='view') }}
-
 with pop_raw as (
     select * from {{ source('raw_climate_source', 'ext_population') }}
 ),
