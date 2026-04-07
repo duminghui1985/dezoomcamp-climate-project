@@ -1,0 +1,32 @@
+version: 2
+
+models:
+  - name: fact_climate_population
+    description: "The final optimized fact table."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - country_code
+            - record_year
+
+    columns:
+      - name: country_code
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_value_lengths_to_equal:
+              value: 3
+
+      - name: record_year
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1960
+              max_value: 2013
+
+      - name: annual_avg_temp
+        tests:
+          - not_null
+
+      - name: population
+        tests:
+          - not_null

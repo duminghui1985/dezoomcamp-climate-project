@@ -1,0 +1,13 @@
+version: 2
+
+models:
+  - name: int_temperature_standardized
+    description: "Temperature data with standardized ISO country codes."
+    columns:
+      - name: country_code
+        description: "The country code should be the 3-letter ISO code."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('country_mapping')
+              field: country_code

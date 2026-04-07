@@ -1,0 +1,28 @@
+version: 2
+
+models:
+  - name: stg_temperature
+    description: "Cleaned annual average temperature data."
+    columns:
+      - name: country
+        tests:
+          - not_null
+      - name: record_year
+        tests:
+          - not_null
+
+  - name: stg_population
+    description: "Unpivoted population data from wide to long format."
+    columns:
+      - name: country
+        tests:
+          - not_null
+      - name: record_year
+        tests:
+          - not_null
+      - name: population
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
