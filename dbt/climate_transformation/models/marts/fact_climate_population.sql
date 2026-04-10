@@ -1,33 +1,33 @@
+{% set start_year = var('project_start_year') %}
+
 {{
   config(
     partition_by={
-      "field": "record_year",
-      "data_type": "int64",
-      "range": {
-        "start": 1960,
-        "end": 2024,
-        "interval": 1
-      }
+      "field": "record_date",
+      "data_type": "date",
+      "granularity": "year"
     },
     cluster_by=["country_code"]
   )
 }}
 
-with temperature_data as (
+with temperature as (
     select * from {{ ref('int_temperature_standardized') }}
+    where record_year >= {{ start_year }}
 ),
 
-population_data as (
+population as (
     select * from {{ ref('stg_population') }}
+    where record_year >= {{ start_year }}
 )
 
 select
     t.country_code,
     p.country,
-    t.record_year,
+    date(t.record_year, 1, 1) as record_date, 
     t.annual_avg_temp,
     p.population
-from temperature_data t
-inner join population_data p
+from temperature t
+inner join population p
     on t.country_code = p.country_code
     and t.record_year = p.record_year

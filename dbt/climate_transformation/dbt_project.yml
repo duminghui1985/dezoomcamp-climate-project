@@ -42,3 +42,7 @@ seeds:
     +column_types:
       temp_name: string
       country_code: string
+
+vars:
+  project_start_year: 1960
+  current_expected_end_year: 2013
