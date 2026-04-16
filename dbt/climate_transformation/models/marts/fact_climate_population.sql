@@ -7,7 +7,7 @@
       "data_type": "date",
       "granularity": "year"
     },
-    cluster_by=["country_code"]
+    cluster_by=["country"]
   )
 }}
 

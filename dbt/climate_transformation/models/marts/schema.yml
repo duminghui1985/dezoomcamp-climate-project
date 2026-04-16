@@ -27,3 +27,27 @@ models:
       - name: population
         tests:
           - not_null
+
+  - name: fact_temp_increase_ranking
+    description: "Summary table showing the total temperature change per country."
+    columns:
+      - name: country
+        description: "Standardized country name."
+        tests:
+          - unique
+          - not_null
+
+      - name: temp_start_year
+        description: "Average temperature in the project start year."
+        tests:
+          - not_null
+
+      - name: temp_end_year
+        description: "Average temperature in the expected end year."
+        tests:
+          - not_null
+
+      - name: total_increase
+        description: "The delta (End Temp - Start Temp)."
+        tests:
+          - not_null
