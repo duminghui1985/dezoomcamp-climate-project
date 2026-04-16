@@ -36,7 +36,7 @@ The analysis focuses on the **1960–2013** window, the period with the highest 
 *   **Global Land Temp (Berkeley Earth):** Monthly average temperatures by country (1743–2013).
 *   **World Population (World Bank):** Annual total population counts (1960–2023). This data was originally provided in **wide-format** (years as columns).
 
-To ensure pipeline stability and reproducibility, all raw CSV files are mirrored in this repository. This approach bypasses third-party API authentication hurdles (e.g., Kaggle API) and prevents failures due to upstream path changes.
+To ensure pipeline stability and reproducibility, all raw CSV files are mirrored in this repository. This approach bypasses third-party API authentication hurdles and prevents failures due to upstream path changes.
 
 👉 **[View Full Metadata & Mirror Links](./data/raw/README.md)**  
 
@@ -86,38 +86,32 @@ To ensure high performance and cost-efficiency for the analytical queries, the f
 
 ## 6. Transformations & Data Modeling (dbt)
 
+This project uses **dbt** to transform raw data into clean, analysis-ready tables. The process follows a three-layer "Medallion" architecture.
+
 ### 6.1 Data Modeling Layers
 
-#### **1. Staging Layer (`models/staging/`)**
-The staging layer focuses on data type conversion and initial cleanup:
-*   **`stg_temperature`** 
-    * **Granularity Alignment:** The raw Berkeley Earth data provides monthly observations. Since population data is annual, this model parses raw date strings and aggregates monthly records into **annual averages** (`AVG()`). This ensures temporal alignment between the two datasets.
-*   **`stg_population`** 
-     * **Wide-to-Long Normalization:** The World Bank provides population data in a "Wide Format" (years as columns). I implemented the `UNPIVOT` function to transform 60+ yearly columns into a relational **Long Format**, making the data suitable for time-series analysis and joining.
-     * **Dynamic Column Cleanup:**: Since BigQuery does not allow column names to start with numbers, a year_ prefix was added during the ingestion phase.
+#### **1. Staging Layer: Initial Cleanup**
+This layer cleans the raw data and fixes formats to ensure consistency.
+*   **`stg_temperature`**: Converts monthly temperature records into **annual averages**. This aligns the timeframe with the annual population data.
+*   **`stg_population`**: Uses the `UNPIVOT` function to convert the "Wide Format" (years as columns) into a **Long Format** (years as rows). It also removes technical prefixes (like `year_`) added during the ingestion phase.
 
-#### **2. Intermediate Layer (`models/intermediate/`)**
-This layer handles standardization:
-*   **`int_temperature_standardized`** 
-    1. **ISO Standard Mapping:**
-    It performs an INNER JOIN between the staging temperature data and a dbt seed (country_mapping). This replaces inconsistent country names with standardized 3-letter **ISO-3166 Alpha-3 codes** (e.g., mapping "United States" to USA).Note: Using standardized codes ensures 100% join integrity when merging with the population dataset later.
-    2. **Deduplication:** I implemented a re-aggregation logic to handle "many-to-one" mappings (e.g., merging "Denmark" and "Denmark (Europe)" into a single `DNK` entity) to ensure a unique record for every country-year combination.
+#### **2. Intermediate Layer: Standardization**
+This layer ensures that data from different sources can be joined correctly.
+*   **Standardization**: Uses a lookup table (seed) to map various country names (e.g., "United States" vs "USA") to standardized **ISO-3166 Alpha-3 codes**.
+*   **Deduplication**: Merges duplicate records (e.g., combining "Denmark" and "Denmark (Europe)") by averaging their values. This ensures there is only one unique record per country per year.
 
-#### **3. Marts Layer (`models/marts/`)**
-The final "Single Source of Truth":
-*   **`fact_climate_population`:** This is the core table that performs an `INNER JOIN` between the standardized climate and population datasets. It is materialized as a table and utilizes the **BigQuery optimizations** (Partitioning/Clustering) detailed in Section 5.
+#### **3. Marts Layer: Final Tables**
+These are the optimized tables used directly by the dashboard.
+*   **`fact_climate_population`**: The core table that joins climate and population data. It is materialized as a table and optimized with BigQuery **partitioning** (by year) and **clustering** (by country).
+*   **`temp_increase_ranking`**: A summary table that calculates the total temperature rise for each country.
 
+### 6.2 Data Quality & Testing
+To ensure the data is accurate, several automated tests run during the build process:
+*   **Integrity Tests**: Generic tests verify that IDs are unique and no critical data is missing (`not_null`).
+*   **Join Verification**: Ensures that joining tables did not create unexpected duplicate rows.
+*   **Logic Tests**: Custom SQL tests verify that the data covers the correct timeframe (1960–2013) and that there are no missing years (continuity check).
 
-### 6.2 Data Quality & Automated Testing
-To guarantee the reliability of the dashboard, I implemented a robust testing framework:
-*   **Schema Tests (`schema.yml`):**
-    *   Standard `not_null` and `unique` tests.
-    *   `unique_combination_of_columns` test on `country_code` and `record_date` to prevent join-induced duplicates.
-*   **Singular Tests (Custom SQL in `tests/`):**
-    *   **`assert_data_range_is_valid`**: A parameterized test using dbt variables to ensure the dataset covers the full expected period (1960–2013).
-    *   **`assert_no_year_gaps`**: A mathematical continuity test that ensures no years were lost during the aggregation or join process.
-
-### 6.3 dbt Lineage
+### 6.3 dbt Lineage Graph
 ![dbt Lineage](./images/dbt_lineage.png)
 
 
