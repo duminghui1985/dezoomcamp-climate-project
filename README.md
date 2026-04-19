@@ -3,7 +3,7 @@
 ## 1. Problem Description
 
 ### **Overview**
-Since the 1950s and 1960s, the global population has experienced unprecedented growth. Simultaneously, the issues of rising global temperatures and deteriorating climate conditions have increasingly entered the public consciousness, becoming some of the most critical challenges of our time. 
+Since the 1960s, the global population has experienced unprecedented growth. Simultaneously, the issues of rising global temperatures and deteriorating climate conditions have increasingly entered the public consciousness, becoming some of the most critical challenges of our time. 
 
 This project aims to analyze global population data and land temperature records between **1960 and 2013**. By integrating these two distinct datasets, the pipeline seeks to uncover the historical correlation between human population surges and climate shifts, while providing a granular view of how these trends vary across different nations and regions.
 
@@ -56,6 +56,7 @@ To ensure pipeline stability and reproducibility, all raw CSV files are mirrored
 
 ### **4.1 Architecture Diagram**
  GitHub Mirror -> Kestra -> GCS (Data Lake) -> BigQuery External Tables -> dbt (Transformations/Tests) -> BigQuery Optimized Fact Table -> Looker Studio.
+ ![architecture](./images/architecture.png)
 
 ### 4.2 Pipeline Workflow
 1.  **Infrastructure as Code (IaC):** **Terraform** is used to provision the Google Cloud Storage (GCS) bucket and BigQuery datasets, ensuring a reproducible and version-controlled cloud environment.
