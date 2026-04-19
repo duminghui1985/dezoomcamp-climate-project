@@ -115,6 +115,15 @@ To ensure the data is accurate, several automated tests run during the build pro
 ![dbt Lineage](./images/dbt_lineage.png)
 
 
+## 7. Visualization
+![dashboard](./images/dashboard.png)
+
+## 8. How to Reproduce
+For a detailed, step-by-step technical guide on how to reproduce this entire pipeline on Ubuntu 24.04, please refer to the documentation below:
+
+👉 **[Detailed Reproduction Guide](./docs/reproduce.md)**
+
+
 
 
 
