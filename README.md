@@ -7,11 +7,11 @@ Since the late 20th century, the global population has grown at an unprecedented
 This project analyzes global population data and land temperature records from 1960 to 2013. By combining these two datasets, we aim to uncover the link between human population growth and climate shifts across different countries and regions.
 
 ### **The Challenges**
-To perform a meaningful global analysis, several data engineering obstacles had to be overcome:
+To perform an accurate global analysis, we had to overcome several technical hurdles:
 
 *  **Scattered Data:** Historical climate records (Berkeley Earth) and populatioh records (World Bank) reside in separate repositories. Relying on live third-party platforms for large-scale analysis is often unstable and prone to authentication or path changes.
 *  **Format Mismatch:** The population data uses "Wide Format" (years as columns), which is hard to analyze, while temperature data is recorded monthly instead of annually.
-*  **Naming Inconsistency:** Different sources use different names for the same country (e.g., "Russia" vs. "Russian Federation"). Without a fix, much of the data would be lost during merging.
+*  **Naming Inconsistency:** Different sources use different names for the same country (e.g., "United States" vs "USA"). Without a fix, much of the data would be lost during merging.
 *  **Slow Performance:** Processing over 50 years of data for over 200 countries is slow. Without optimization, creating dashboards would be expensive and laggy.  
 
 ### **The Solution**
@@ -22,7 +22,7 @@ This project implements an end-to-end Cloud Data Pipeline to transform raw, mess
 *   **Advanced Transformation:** Using dbt to execute complex SQL logic:
     *   Unpivoting the population wide-table into a normalized long-table format.
     *   Aggregating monthly temperature records into annual averages.
-*   **Standardized Mapping** Implementing a robust ISO-3166 mapping strategy using dbt seeds to ensure country names match perfectly across all datasets.
+*   **Standardized Mapping:** Implementing a robust ISO-3166 mapping strategy using dbt seeds to ensure country names match perfectly across all datasets.
 *   **Data Warehouse Optimization:** Organizing the final data in BigQuery using "Partitioning" and "Clustering." This ensures the Looker Studio dashboard loads in under a second and keeps cloud costs low.
 <br><br>
 
@@ -61,7 +61,7 @@ To ensure pipeline stability and reproducibility, all raw CSV files are mirrored
     *   Downloads raw CSV files from the GitHub mirror.
     *   Uploads raw data to GCS (Data Lake).
     *   Creates external tables in BigQuery to make the raw data searchable.
-3.  **Data Transformation (dbt):** The transformation logic follows a **Medallion Architecture**:
+3.  **Data Transformation (dbt):** The transformation logic follows a Medallion Architecture:
     *   **Staging:** Fixes data formats. Converting monthly temperatures to annual averages and reshaping population data into a usable layout (Unpivot).
     *   **Intermediate:** Standardizes country names using ISO codes and merges duplicates to ensure accuracy.
     *   **Marts:** Combines climate and population data into a single, high-performance table.
@@ -86,24 +86,24 @@ To ensure high performance and cost-efficiency for the analytical queries, the f
 
 ## 6. Transformations & Data Modeling (dbt)
 
-This project uses **dbt** to transform raw data into clean, analysis-ready tables. The process follows a three-layer "Medallion" architecture.
+This project uses dbt to transform raw data into clean, analysis-ready tables. The process follows a three-layer "Medallion" architecture.
 
 ### 6.1 Data Modeling Layers
 
 #### **1. Staging Layer: Initial Cleanup**
 This layer cleans the raw data and fixes formats to ensure consistency.
-*   **`stg_temperature`**: Converts monthly temperature records into **annual averages**. This aligns the timeframe with the annual population data.
-*   **`stg_population`**: Uses the `UNPIVOT` function to convert the "Wide Format" (years as columns) into a **Long Format** (years as rows). It also removes technical prefixes (like `year_`) added during the ingestion phase.
+*   **`stg_temperature`**: Converts monthly temperature records into annual averages. This aligns the timeframe with the annual population data.
+*   **`stg_population`**: Uses the `UNPIVOT` function to convert the "Wide Format" (years as columns) into a "Long Format" (years as rows). It also removes technical prefixes (like `year_`) added during the ingestion phase.
 
 #### **2. Intermediate Layer: Standardization**
 This layer ensures that data from different sources can be joined correctly.
-*   **Standardization**: Uses a lookup table (seed) to map various country names (e.g., "United States" vs "USA") to standardized **ISO-3166 Alpha-3 codes**.
+*   **Standardization**: Uses a lookup table (seed) to map various country names (e.g., "United States" vs "USA") to standardized country codes.
 *   **Deduplication**: Merges duplicate records (e.g., combining "Denmark" and "Denmark (Europe)") by averaging their values. This ensures there is only one unique record per country per year.
 
 #### **3. Marts Layer: Final Tables**
 These are the optimized tables used directly by the dashboard.
-*   **`fact_climate_population`**: The core table that joins climate and population data. It is materialized as a table and optimized with BigQuery **partitioning** (by year) and **clustering** (by country).
-*   **`temp_increase_ranking`**: A summary table that calculates the total temperature rise for each country. It is materialized as a table and optimized with BigQuery **clustering** (by country).
+*   **`fact_climate_population`**: The core table that joins climate and population data. It is materialized as a table and optimized with BigQuery partitioning (by year) and clustering (by country).
+*   **`fact_temp_increase_ranking`**: A summary table that calculates the total temperature rise for each country. It is materialized as a table and optimized with BigQuery clustering (by country).
 
 ### 6.2 Data Quality & Testing
 To ensure the data is accurate, several automated tests run during the build process:
